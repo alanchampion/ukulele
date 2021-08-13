@@ -23,11 +23,13 @@ class QueueCommand(
     private fun printQueue(player: Player, pageIndex: Int): String {
         val totalDuration = player.remainingDuration
         val tracks = player.tracks
+        val loopList = player.loopList
+
         if (tracks.isEmpty())
             return "The queue is empty."
 
         return buildString {
-            append(paginateQueue(tracks, pageIndex))
+            append(paginateQueue(tracks, pageIndex, loopList))
             append("\nThere are **${tracks.size}** tracks with a remaining length of ")
 
             if (tracks.any{ it.info.isStream }) {
@@ -38,7 +40,7 @@ class QueueCommand(
         }
     }
 
-    private fun paginateQueue(tracks: List<AudioTrack>, index: Int) = buildString {
+    private fun paginateQueue(tracks: List<AudioTrack>, index: Int, loopList: Iterable<Int>) = buildString {
         val pageCount: Int = (tracks.size + pageSize - 1) / pageSize
         val pageIndex = index.coerceIn(1..pageCount)
 
@@ -49,7 +51,8 @@ class QueueCommand(
         val pageEnd = (offset + pageSize).coerceAtMost(tracks.size)
 
         tracks.subList(offset, pageEnd).forEachIndexed { i, t ->
-            appendLine("`[${offset + i + 1}]` **${t.info.title}** `[${if (t.info.isStream) "Live" else TextUtils.humanReadableTime(t.duration)}]`")
+            appendLine("`[${offset + i + 1}]` **${t.info.title}** `[${if (t.info.isStream) "Live" 
+                else TextUtils.humanReadableTime(t.duration)}]`${if (offset + i in loopList) " :repeat:" else ""}")
         }
     }
 

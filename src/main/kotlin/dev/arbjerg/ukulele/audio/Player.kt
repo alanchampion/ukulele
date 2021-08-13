@@ -26,6 +26,8 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
 
     private val guildId = guildProperties.guildId
     private val queue = TrackQueue()
+    var loopList = mutableListOf<Int>()
+        private set
     private val player = beans.apm.createPlayer().apply {
         addListener(this@Player)
         volume = guildProperties.volume
@@ -57,6 +59,9 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
 
     val isPaused : Boolean
         get() = player.isPaused
+
+    val isLooped : Boolean
+        get() = loopList.isNotEmpty()
 
     /**
      * @return whether or not we started playing
@@ -97,13 +102,43 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
     }
 
     fun stop() {
+        stopLoop()
         queue.clear()
         player.stopTrack()
     }
 
+    fun loop(): List<AudioTrack> {
+        val looped = mutableListOf<AudioTrack>()
+        var newRange = 0 .. 0
+        loopList = newRange.toMutableList()
+        // Skip the first track if it is stored here
+        if (newRange.contains(0) && player.playingTrack != null) {
+            looped.add(player.playingTrack)
+            // Reduce range if found
+            newRange = 0 .. - 1
+        } else {
+            newRange = newRange.first - 1 .. newRange.last - 1
+        }
+        if (newRange.last >= 0) looped.addAll(queue.loopRange(newRange))
+
+        return looped
+    }
+
+    fun stopLoop() {
+        loopList = mutableListOf<Int>()
+    }
+
     override fun onTrackEnd(player: AudioPlayer, track: AudioTrack, endReason: AudioTrackEndReason) {
-        val new = queue.take() ?: return
-        player.playTrack(new)
+        if(isLooped) {
+            val loopTrackIndex = loopList.removeFirstOrNull()
+            loopTrackIndex?.let { loopList.add(it) }
+            val loopTrack = loopTrackIndex?.let { tracks[it].makeClone() }
+
+            player.playTrack(loopTrack)
+        } else {
+            val new = queue.take() ?: return
+            player.playTrack(new)
+        }
     }
 
     override fun onTrackException(player: AudioPlayer, track: AudioTrack, exception: FriendlyException) {
