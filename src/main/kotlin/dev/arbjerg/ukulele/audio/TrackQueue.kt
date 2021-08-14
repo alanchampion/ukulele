@@ -18,8 +18,4 @@ class TrackQueue {
         queue.removeAll(list)
         return list
     }
-
-    fun loopRange(range: IntRange): List<AudioTrack> {
-        return queue.slice(range)
-    }
 }
