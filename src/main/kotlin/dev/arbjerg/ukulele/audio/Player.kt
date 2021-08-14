@@ -27,8 +27,8 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
     private val guildId = guildProperties.guildId
     private val queue = TrackQueue()
     private var loopTrack: AudioTrack? = null
-    var looping: Boolean = false
-        private set
+    val looping: Boolean
+        get() = loopTrack != null
     private val player = beans.apm.createPlayer().apply {
         addListener(this@Player)
         volume = guildProperties.volume
@@ -110,14 +110,12 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
 
     fun loop(): AudioTrack {
         val looped = tracks[0]
-        looping = true
         loopTrack = looped.makeClone()
         return looped
     }
 
     fun stopLoop() {
         loopTrack = null
-        looping = false
     }
 
     override fun onTrackEnd(player: AudioPlayer, track: AudioTrack, endReason: AudioTrackEndReason) {
