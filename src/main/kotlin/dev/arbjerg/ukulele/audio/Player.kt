@@ -26,7 +26,8 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
 
     private val guildId = guildProperties.guildId
     private val queue = TrackQueue()
-    var loopList = mutableListOf<Int>()
+    private var loopTrack: AudioTrack? = null
+    var looping: Boolean = false
         private set
     private val player = beans.apm.createPlayer().apply {
         addListener(this@Player)
@@ -60,9 +61,6 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
     val isPaused : Boolean
         get() = player.isPaused
 
-    val isLooped : Boolean
-        get() = loopList.isNotEmpty()
-
     /**
      * @return whether or not we started playing
      */
@@ -76,6 +74,7 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
     }
 
     fun skip(range: IntRange): List<AudioTrack> {
+        stopLoop()
         val rangeFirst = range.first.coerceAtMost(queue.tracks.size)
         val rangeLast = range.last.coerceAtMost(queue.tracks.size)
         val skipped = mutableListOf<AudioTrack>()
@@ -90,6 +89,8 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
         }
         if (newRange.last >= 0) skipped.addAll(queue.removeRange(newRange))
         if (skipped.first() == player.playingTrack) player.stopTrack()
+        if (!tracks.isEmpty())
+            loop()
         return skipped
     }
 
@@ -107,34 +108,21 @@ class Player(val beans: Beans, guildProperties: GuildProperties) : AudioEventAda
         player.stopTrack()
     }
 
-    fun loop(): List<AudioTrack> {
-        val looped = mutableListOf<AudioTrack>()
-        var newRange = 0 .. 0
-        loopList = newRange.toMutableList()
-        // Skip the first track if it is stored here
-        if (newRange.contains(0) && player.playingTrack != null) {
-            looped.add(player.playingTrack)
-            // Reduce range if found
-            newRange = 0 .. - 1
-        } else {
-            newRange = newRange.first - 1 .. newRange.last - 1
-        }
-        if (newRange.last >= 0) looped.addAll(queue.loopRange(newRange))
-
+    fun loop(): AudioTrack {
+        val looped = tracks[0]
+        looping = true
+        loopTrack = looped.makeClone()
         return looped
     }
 
     fun stopLoop() {
-        loopList = mutableListOf<Int>()
+        loopTrack = null
+        looping = false
     }
 
     override fun onTrackEnd(player: AudioPlayer, track: AudioTrack, endReason: AudioTrackEndReason) {
-        if(isLooped) {
-            val loopTrackIndex = loopList.removeFirstOrNull()
-            loopTrackIndex?.let { loopList.add(it) }
-            val loopTrack = loopTrackIndex?.let { tracks[it].makeClone() }
-
-            player.playTrack(loopTrack)
+        if(looping) {
+            player.playTrack(loopTrack?.makeClone())
         } else {
             val new = queue.take() ?: return
             player.playTrack(new)
