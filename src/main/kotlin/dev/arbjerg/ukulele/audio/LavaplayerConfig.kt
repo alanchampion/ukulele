@@ -3,7 +3,6 @@ package dev.arbjerg.ukulele.audio
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers
-import com.sedmelluq.discord.lavaplayer.source.local.LocalAudioSourceManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -14,7 +13,6 @@ class LavaplayerConfig {
     fun playerManager(): AudioPlayerManager {
         val apm = DefaultAudioPlayerManager()
         AudioSourceManagers.registerRemoteSources(apm)
-        AudioSourceManagers.registerLocalSource(apm)
         return apm
     }
 
